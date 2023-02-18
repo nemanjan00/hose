@@ -14,6 +14,8 @@ const device = portAudio.AudioIO({
 	}
 });
 
+device.start();
+
 const types = {
 	TYPE_GROUP_JOIN: 1,
 	TYPE_GROUP_LEAVE: 2,
@@ -29,6 +31,8 @@ const types = {
 
 let last = 0;
 
+let dataBuffer = Buffer.from("", "hex");
+
 const handlers = {
 	TYPE_CALL_AUDIO: (data) => {
 		console.log(Date.now() - last);
@@ -40,8 +44,18 @@ const handlers = {
 			decoded[key] = alawmulaw.mulaw.decodeSample(sample) / 32768;
 		});
 
-		console.log(toBuffer(decoded));
-		device.write(toBuffer(decoded));
+		console.log(decoded);
+
+		const decodedBuffer = toBuffer(decoded);
+
+		dataBuffer = Buffer.concat([dataBuffer, decodedBuffer]);
+
+		if(dataBuffer.length > 8000 * 4) {
+			const buffer = dataBuffer.slice(0, 8000 * 4);
+			console.log(buffer);
+			device.write(buffer);
+			dataBuffer = dataBuffer.slice(8000 * 4);
+		}
 	}
 };
 
@@ -59,7 +73,7 @@ const unpackMessage = (msg) => {
 	return decoded;
 };
 
-const join520520 = msgpack.encode([types["TYPE_GROUP_JOIN"], [724044]]);
+const join520520 = msgpack.encode([types["TYPE_GROUP_JOIN"], [520520]]);
 
 const ws = new WebSocket("wss://hose1.brandmeister.network/spotter/?token=test:test", ["spotter"], {
 	perMessageDeflate: false,
